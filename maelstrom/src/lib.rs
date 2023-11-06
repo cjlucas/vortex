@@ -1,3 +1,5 @@
+use std::io::BufRead;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -46,6 +48,67 @@ pub enum Payload {
     GenerateOk {
         id: String,
     },
+}
+
+pub struct Node<'a> {
+    // id of the node
+    pub id: String,
+    msg_id: u64,
+    input: std::io::BufReader<std::io::StdinLock<'a>>,
+}
+
+impl<'a> Node<'a> {
+    pub fn start() -> Self {
+        let stdin = std::io::stdin().lock();
+        let mut input = std::io::BufReader::new(stdin);
+
+        let mut line = String::new();
+        let _ = input.read_line(&mut line).expect("read line should work");
+
+        let msg = Message::decode(&line);
+
+        if let Payload::Init { node_id, .. } = &msg.body.payload {
+            let mut s = Self {
+                id: node_id.clone(),
+                msg_id: 0,
+                input,
+            };
+            s.reply(&msg, Payload::InitOk);
+
+            s
+        } else {
+            unreachable!("Expected init, received {:?}", msg.body.payload);
+        }
+    }
+
+    pub fn next_message(&mut self) -> Option<Message> {
+        let mut line = String::new();
+        let bytes_read = self
+            .input
+            .read_line(&mut line)
+            .expect("read line should work");
+        if bytes_read == 0 {
+            return None;
+        }
+
+        Some(Message::decode(&line))
+    }
+
+    pub fn reply(&mut self, msg: &Message, payload: Payload) {
+        let reply = Message {
+            src: self.id.clone(),
+            dest: msg.src.clone(),
+            body: Body {
+                id: Some(self.msg_id),
+                in_reply_to: msg.body.id,
+                payload,
+            },
+        };
+
+        println!("{}", reply.encode());
+
+        self.msg_id += 1;
+    }
 }
 
 #[cfg(test)]
