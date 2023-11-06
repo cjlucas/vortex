@@ -42,6 +42,10 @@ pub enum Payload {
     EchoOk {
         echo: String,
     },
+    Generate,
+    GenerateOk {
+        id: String,
+    },
 }
 
 #[cfg(test)]

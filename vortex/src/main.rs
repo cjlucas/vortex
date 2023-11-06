@@ -1,7 +1,6 @@
 use std::io::BufRead;
 
 fn main() {
-    eprintln!("oh boy!");
     let stdin = std::io::stdin().lock();
     let mut r = std::io::BufReader::new(stdin);
 
@@ -9,6 +8,7 @@ fn main() {
 
     let mut id = None;
     let mut msg_id = Some(1);
+    let mut generated_id = 0;
 
     while r.read_line(&mut line).expect("read_line to work") > 0 {
         eprintln!("{:?}", &line);
@@ -46,6 +46,23 @@ fn main() {
                 println!("{}", resp.encode());
             }
             maelstrom::Payload::EchoOk { .. } => {}
+            maelstrom::Payload::Generate => {
+                let resp = maelstrom::Message {
+                    src: id.clone().unwrap(),
+                    dest: msg.src,
+                    body: maelstrom::Body {
+                        id: msg_id,
+                        in_reply_to: msg.body.id,
+                        payload: maelstrom::Payload::GenerateOk {
+                            id: format!("{}:{}", id.clone().unwrap(), generated_id),
+                        },
+                    },
+                };
+
+                println!("{}", resp.encode());
+                generated_id += 1;
+            }
+            maelstrom::Payload::GenerateOk { .. } => {}
         }
 
         line = String::new();
