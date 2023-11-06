@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "vortex",
+  "maelstrom"
+]
+
+resolver = "2"
